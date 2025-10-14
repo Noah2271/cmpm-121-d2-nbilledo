@@ -1,5 +1,29 @@
-.icon {
-  width: 64px;
-  vertical-align: top;
-  border: 1px solid salmon;
+.main-container {
+  font-family: "Press Start 2P", monospace;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  text-align: center;
+}
+
+canvas {
+  border: 10px solid black;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  cursor: crosshair;
+}
+
+button {
+  padding: 6px 12px;
+  font-family: "Press Start 2P", monospace;
+  border: none;
+  background-color: #efbf04;
+  color: black;
+  cursor: pointer;
+  font-size: 14px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+button:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 0 25px rgba(245, 193, 108, 1);
 }
