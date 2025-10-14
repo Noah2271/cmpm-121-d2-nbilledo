@@ -17,6 +17,7 @@ if (!context) throw new Error("Canvas not supported");
 
 type Point = { x: number; y: number };
 const strokeArray: Point[][] = []; // Store array of arrays full of points
+const redoArray: Point[][] = [];
 let currentStroke: Point[] = []; // Store points of current stroke
 let drawing = false;
 
@@ -70,5 +71,23 @@ canvas.addEventListener("mouseleave", () => {
 const clearButton = document.getElementById("clear") as HTMLButtonElement;
 clearButton.addEventListener("click", () => {
   strokeArray.length = 0; // clear all strokes
+  DrawingChanged();
+});
+
+const undoButton = document.getElementById("undo") as HTMLButtonElement;
+const redoButton = document.getElementById("redo") as HTMLButtonElement;
+undoButton.addEventListener("click", () => {
+  const lastStroke = strokeArray.pop();
+  if (lastStroke !== undefined) {
+    redoArray.push(lastStroke); // Note: pop and push elements separately; assign popped value to local var
+  }
+  DrawingChanged();
+});
+
+redoButton.addEventListener("click", () => {
+  const redoStroke = redoArray.pop();
+  if (redoStroke !== undefined) {
+    strokeArray.push(redoStroke);
+  }
   DrawingChanged();
 });
