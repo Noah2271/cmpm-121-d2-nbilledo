@@ -1,6 +1,6 @@
 import "./style.css";
 
-// -----------------------  HTML ----------------------- 
+// -----------------------  HTML -----------------------
 document.body.innerHTML = `
 <div class="main-container">
   <h1>WHITEBOARD<h1>
