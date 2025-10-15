@@ -5,6 +5,13 @@
   background-color: #ffffff;
   text-align: center;
 }
+.tool-text {
+  font-size: 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  font-family: "Press Start 2P", monospace;
+}
 
 canvas {
   border: 10px solid black;
