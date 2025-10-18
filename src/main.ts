@@ -83,16 +83,8 @@ class ToolCommand { // Consolidated Tool preview, Sticker Preview Class
     this.y = y;
   }
 
-  setStrokeWeight(weight: number) {
-    this.strokeWeight = weight;
-  }
-
-  setSticker(sticker: string) {
-    this.sticker = sticker;
-  }
-
-  setOpacity(opacity: number) {
-    this.opacity = opacity;
+  set(options: { weight?: number; sticker?: string; opacity?: number }) {
+    Object.assign(this, options);
   }
 
   draw(ctx: CanvasRenderingContext2D) {
@@ -177,11 +169,9 @@ canvas.addEventListener("mousemove", (event) => {
     preview.updatePosition(x, y);
 
     if (selectedSticker) {
-      preview.setSticker(selectedSticker);
-      preview.setOpacity(0.5);
+      preview.set({ opacity: 0.5, sticker: selectedSticker });
     } else {
-      preview.setStrokeWeight(markerSize);
-      preview.setOpacity(1);
+      preview.set({ opacity: 1, weight: markerSize });
     }
   }
 
