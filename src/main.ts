@@ -16,6 +16,7 @@ document.body.innerHTML = `
   <button id="sticker-1" style="background-color: #000000ff;">😀</button>
   <button id="sticker-2" style="background-color: #050505ff;">⭐</button>
   <button id="sticker-3" style="background-color: #080808ff;">🍀</button>
+  <button id="custom-sticker" style="background-color: #50ac47ff;">Custom Sticker</button>
   </div
   </div>
 `;
@@ -227,7 +228,12 @@ thickMarker.addEventListener("click", () => {
 
 stickerButtons.forEach((button) => {
   button.addEventListener("click", () => {
-    selectedSticker = button.textContent || null;
-    preview = null;
+    if (button.id == "custom-sticker") {
+      const response = prompt("Enter sticker content:");
+      selectedSticker = response;
+    } else {
+      selectedSticker = button.textContent || null;
+      preview = null;
+    }
   });
 });
