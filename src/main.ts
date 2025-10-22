@@ -9,25 +9,24 @@ document.body.innerHTML = `
   <button id="clear">CLEAR</button>
   <button id="redo" style="background-color: #f8921eff;">REDO</button>
   <button id="undo" style="background-color: #f72314ff;">UNDO</button>
-    <button id="export" style="background-color: #00b894;">EXPORT PNG</button>
-
+  <button id="export" style="background-color: #00b894;">EXPORT PNG</button>
   </br><div class = tool-text><p>DEFAULT BRUSHES</p></div>
-  <button id="toolOne" style="background-color: #8256faff;">THIN MARKER [5PX]</button>
-  <button id="toolTwo" style="background-color: #a446fcff;">THICK MARKER [10PX]</button>
+  <button id="thinMarker" style="background-color: #8256faff;">THIN MARKER [5PX]</button>
+  <button id="thickMarker" style="background-color: #a446fcff;">THICK MARKER [10PX]</button>
   <div class = sticker-button>
   <div class = tool-text><p>STICKERS</p></div>
-  <button id="sticker-1" style="background-color: #000000ff;">😀</button>
+  <button id="sticker-1" style="background-color: #000000ff;">🔥</button>
   <button id="sticker-2" style="background-color: #050505ff;">⭐</button>
-  <button id="sticker-3" style="background-color: #080808ff;">🍀</button>
-  <button id="custom-sticker" style="background-color: #50ac47ff;">Set String Sticker</button>
-     <button id="import-sticker" style="background-color: #2081f0;">Import Image Sticker</button>
-    <input type="file" id="sticker-upload" accept="image/*" style="display:none;" />
+  <button id="sticker-3" style="background-color: #080808ff;">✨</button>
+  <button id="custom-sticker" style="background-color: #50ac47ff;">INSERT CUSTOM TEXT/EMOJI</button>
+  <button id="import-sticker" style="background-color: #2081f0;">IMPORT IMAGE</button>
+  <input type="file" id="sticker-upload" accept="image/*" style="display:none;" />
   </div>
   <div class="brush-size-container">
   </br>
-  <label for="brush-size">Brush Size:</label>
-  <input type="range" id="brush-size" min="1" max="50" value="5" />
-  <span id="brush-size-value">5px</span>
+  <label for="weight-slider">BRUSH SIZE:</label>
+  <input type="range" id="weight-slider" min="1" max="100" value="5" />
+  <span id="brush-size-value">5PX</span>
 </div>
 </div>
 `;
@@ -36,22 +35,29 @@ document.body.innerHTML = `
 const undoButton = document.getElementById("undo") as HTMLButtonElement;
 const redoButton = document.getElementById("redo") as HTMLButtonElement;
 const clearButton = document.getElementById("clear") as HTMLButtonElement;
-const thinMarker = document.getElementById("toolOne") as HTMLButtonElement;
-const thickMarker = document.getElementById("toolTwo") as HTMLButtonElement;
+const thinMarker = document.getElementById("thinMarker") as HTMLButtonElement;
+const thickMarker = document.getElementById("thickMarker") as HTMLButtonElement;
 const stickerButtons = document.querySelectorAll(
   ".sticker-button button",
 ) as NodeListOf<HTMLButtonElement>;
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const context = canvas.getContext("2d");
+const brushSlider = document.getElementById(
+  "weight-slider",
+) as HTMLInputElement;
+const brushValueLabel = document.getElementById(
+  "brush-size-value",
+) as HTMLSpanElement;
+const exportButton = document.getElementById("export") as HTMLButtonElement;
 if (!context) throw new Error("Canvas not supported");
 
 // ----------------------- Tool Classes -----------------------
 class LineCommand {
   private points: [number, number][];
-  private strokeWeight: number;
+  private weight: number;
   constructor(firstPoint: [number, number], brushSize: number) {
     this.points = [firstPoint];
-    this.strokeWeight = brushSize;
+    this.weight = brushSize;
   }
 
   drag(x: number, y: number) {
@@ -61,7 +67,7 @@ class LineCommand {
   display(ctx: CanvasRenderingContext2D) {
     if (this.points.length === 0) return;
     ctx.beginPath();
-    ctx.lineWidth = this.strokeWeight;
+    ctx.lineWidth = this.weight;
     ctx.moveTo(...(this.points[0] as [number, number]));
     for (let i = 1; i < this.points.length; i++) {
       ctx.lineTo(...(this.points[i] as [number, number]));
@@ -73,7 +79,7 @@ class LineCommand {
 class ToolCommand {
   private x: number;
   private y: number;
-  private strokeWeight?: number;
+  private weight?: number;
   private sticker?: string;
   private stickerImage?: HTMLImageElement | undefined;
   private opacity: number;
@@ -82,7 +88,7 @@ class ToolCommand {
     x: number,
     y: number,
     options: {
-      strokeWeight?: number;
+      weight?: number;
       sticker?: string;
       opacity?: number;
       stickerImage?: HTMLImageElement | undefined;
@@ -90,7 +96,7 @@ class ToolCommand {
   ) {
     this.x = x;
     this.y = y;
-    this.strokeWeight = options.strokeWeight ?? 0;
+    this.weight = options.weight ?? 0;
     this.stickerImage = options.stickerImage ?? undefined;
     this.sticker = options.sticker ?? "";
     this.opacity = options.opacity ?? 1;
@@ -107,9 +113,9 @@ class ToolCommand {
 
   draw(ctx: CanvasRenderingContext2D) {
     ctx.globalAlpha = this.opacity;
-    if (this.strokeWeight) {
+    if (this.weight) {
       ctx.beginPath();
-      ctx.arc(this.x, this.y, this.strokeWeight / 2, 0, Math.PI * 2);
+      ctx.arc(this.x, this.y, this.weight / 2, 0, Math.PI * 2);
       ctx.strokeStyle = "black";
       ctx.lineWidth = 2;
       ctx.stroke();
@@ -149,7 +155,7 @@ let selectedImage: HTMLImageElement | null = null;
 function DrawingChanged() {
   canvas.dispatchEvent(new Event("drawing-changed"));
 }
-
+// Iterates through strokeArray and redraws each action on each call.
 canvas.addEventListener("drawing-changed", () => {
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.lineCap = "square";
@@ -169,6 +175,7 @@ canvas.addEventListener("drawing-changed", () => {
 });
 
 // ----------------------- Mouse Events -----------------------
+// Handles tool actions and pushes them as Command objects onto the stack for undo/redo calls.
 canvas.addEventListener("mousedown", (event) => {
   if (selectedSticker) {
     const sticker = new ToolCommand(event.offsetX, event.offsetY, {
@@ -193,11 +200,10 @@ canvas.addEventListener("mousedown", (event) => {
   DrawingChanged();
 });
 
+// Create previews for respective tools when hovering the canvas, or handle the stroke if mouse is down.
 canvas.addEventListener("mousemove", (event) => {
   const x = event.offsetX;
   const y = event.offsetY;
-
-  // If an image sticker is selected, preview it semi-transparently
   if (selectedImage) {
     preview = new ToolCommand(x, y, {
       stickerImage: selectedImage,
@@ -206,11 +212,10 @@ canvas.addEventListener("mousemove", (event) => {
     DrawingChanged();
     return;
   }
-
   if (!preview) {
     const options = selectedSticker
       ? { sticker: selectedSticker, opacity: 0.5 }
-      : { strokeWeight: markerSize };
+      : { weight: markerSize };
     preview = new ToolCommand(x, y, options);
   } else {
     preview.updatePosition(x, y);
@@ -220,9 +225,7 @@ canvas.addEventListener("mousemove", (event) => {
       preview.set({ opacity: 1, weight: markerSize });
     }
   }
-
   DrawingChanged();
-
   if (drawing && currentCommand) {
     currentCommand.drag(x, y);
     DrawingChanged();
@@ -242,6 +245,7 @@ canvas.addEventListener("mouseleave", () => {
 });
 
 // ----------------------- Button Actions -----------------------
+// Undo/Redo/Clear stack handling to pop last action off the stack and undo/redo it or clear the stack.
 clearButton.addEventListener("click", () => {
   strokeArray.length = 0;
   redoArray.length = 0;
@@ -260,9 +264,10 @@ redoButton.addEventListener("click", () => {
   DrawingChanged();
 });
 
+// Brush size handling, changing the size of the brush and adjusting the slider on click.
 thinMarker.addEventListener("click", () => {
   brushSlider.value = "5";
-  brushValueLabel.textContent = "5px";
+  brushValueLabel.textContent = "5PX";
   brushSlider.disabled = false;
   markerSize = 5;
   selectedSticker = null;
@@ -271,13 +276,14 @@ thinMarker.addEventListener("click", () => {
 
 thickMarker.addEventListener("click", () => {
   brushSlider.value = "10";
-  brushValueLabel.textContent = "10px";
+  brushValueLabel.textContent = "10PX";
   brushSlider.disabled = false;
   markerSize = 10;
   selectedSticker = null;
   selectedImage = null;
 });
 
+// Sticker handling for default stickers and text stickers. Prompts user to input text and sets it as stickerText content which is grabbed for the sticker.
 stickerButtons.forEach((button) => {
   button.addEventListener("click", () => {
     if (button.id == "custom-sticker") {
@@ -295,6 +301,7 @@ stickerButtons.forEach((button) => {
 });
 
 // ----------------------- Import Sticker -----------------------
+// Image sticker handling, prompts user to input a file and reads it; loads it as a sticker
 const importButton = document.getElementById(
   "import-sticker",
 ) as HTMLButtonElement;
@@ -322,8 +329,7 @@ fileInput.addEventListener("change", () => {
 });
 
 // ----------------------- Export Image -----------------------
-const exportButton = document.getElementById("export") as HTMLButtonElement;
-
+// Image export button handling, scales up the canvas by two and downloads the image as a png.
 exportButton.addEventListener("click", () => {
   const scale = 2;
   const exportCanvas = document.createElement("canvas");
@@ -345,15 +351,11 @@ exportButton.addEventListener("click", () => {
   link.download = "whiteboard.png";
   link.click();
 });
-
-const brushSlider = document.getElementById("brush-size") as HTMLInputElement;
-const brushValueLabel = document.getElementById(
-  "brush-size-value",
-) as HTMLSpanElement;
-
+// ----------------------- Sliders -----------------------
+// Takes input from HTML slider element and parses it as an int to be passed into the markerSize state variable.
 brushSlider.addEventListener("input", () => {
   markerSize = parseInt(brushSlider.value);
-  brushValueLabel.textContent = `${markerSize}px`;
+  brushValueLabel.textContent = `${markerSize}PX`;
 
   if (preview && !selectedSticker && !selectedImage) {
     preview.set({ weight: markerSize });
