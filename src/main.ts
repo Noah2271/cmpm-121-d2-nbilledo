@@ -9,6 +9,8 @@ document.body.innerHTML = `
   <button id="clear">CLEAR</button>
   <button id="redo" style="background-color: #f8921eff;">REDO</button>
   <button id="undo" style="background-color: #f72314ff;">UNDO</button>
+    <button id="export" style="background-color: #00b894;">EXPORT PNG</button>
+
   </br></br><div class = tool-text><p>TOOLS</p></div>
   <button id="toolOne" style="background-color: #8256faff;">THIN MARKER [5PX]</button>
   <button id="toolTwo" style="background-color: #a446fcff;">THICK MARKER [10PX]</button>
@@ -304,4 +306,29 @@ fileInput.addEventListener("change", () => {
     };
   };
   reader.readAsDataURL(file);
+});
+
+// ----------------------- Export Image -----------------------
+const exportButton = document.getElementById("export") as HTMLButtonElement;
+
+exportButton.addEventListener("click", () => {
+  const scale = 2;
+  const exportCanvas = document.createElement("canvas");
+  exportCanvas.width = canvas.width * scale;
+  exportCanvas.height = canvas.height * scale;
+  const exportContext = exportCanvas.getContext("2d")!;
+  exportContext.scale(scale, scale);
+  strokeArray.forEach((command) => {
+    if (command instanceof LineCommand) {
+      command.display(exportContext);
+    } else if (command instanceof ToolCommand) {
+      command.draw(exportContext);
+    }
+  });
+
+  const dataURL = exportCanvas.toDataURL("image/png");
+  const link = document.createElement("a");
+  link.href = dataURL;
+  link.download = "whiteboard.png";
+  link.click();
 });
