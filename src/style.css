@@ -34,3 +34,22 @@ button:hover {
   transform: translateY(-4px) scale(1.05);
   box-shadow: 0 0 25px rgb(0, 0, 0);
 }
+
+.brush-size-container {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgb(8, 8, 8);
+  font-family: "Press Start 2P", monospace;
+  font-size: 20px;
+}
+
+#brush-size {
+  width: 150px;
+}
+
+#brush-size-value {
+  min-width: 40px;
+  text-align: right;
+}

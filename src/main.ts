@@ -11,10 +11,11 @@ document.body.innerHTML = `
   <button id="undo" style="background-color: #f72314ff;">UNDO</button>
     <button id="export" style="background-color: #00b894;">EXPORT PNG</button>
 
-  </br></br><div class = tool-text><p>TOOLS</p></div>
+  </br><div class = tool-text><p>DEFAULT BRUSHES</p></div>
   <button id="toolOne" style="background-color: #8256faff;">THIN MARKER [5PX]</button>
   <button id="toolTwo" style="background-color: #a446fcff;">THICK MARKER [10PX]</button>
   <div class = sticker-button>
+  <div class = tool-text><p>STICKERS</p></div>
   <button id="sticker-1" style="background-color: #000000ff;">😀</button>
   <button id="sticker-2" style="background-color: #050505ff;">⭐</button>
   <button id="sticker-3" style="background-color: #080808ff;">🍀</button>
@@ -22,6 +23,12 @@ document.body.innerHTML = `
      <button id="import-sticker" style="background-color: #2081f0;">Import Image Sticker</button>
     <input type="file" id="sticker-upload" accept="image/*" style="display:none;" />
   </div>
+  <div class="brush-size-container">
+  </br>
+  <label for="brush-size">Brush Size:</label>
+  <input type="range" id="brush-size" min="1" max="50" value="5" />
+  <span id="brush-size-value">5px</span>
+</div>
 </div>
 `;
 
@@ -254,12 +261,18 @@ redoButton.addEventListener("click", () => {
 });
 
 thinMarker.addEventListener("click", () => {
+  brushSlider.value = "5";
+  brushValueLabel.textContent = "5px";
+  brushSlider.disabled = false;
   markerSize = 5;
   selectedSticker = null;
   selectedImage = null;
 });
 
 thickMarker.addEventListener("click", () => {
+  brushSlider.value = "10";
+  brushValueLabel.textContent = "10px";
+  brushSlider.disabled = false;
   markerSize = 10;
   selectedSticker = null;
   selectedImage = null;
@@ -268,12 +281,12 @@ thickMarker.addEventListener("click", () => {
 stickerButtons.forEach((button) => {
   button.addEventListener("click", () => {
     if (button.id == "custom-sticker") {
+      brushSlider.disabled = true;
       const response = prompt("Enter sticker content:");
       selectedSticker = response;
       selectedImage = null;
-    } else if (button.id === "import-sticker") {
-      // handled below
     } else {
+      brushSlider.disabled = true;
       selectedSticker = button.textContent || null;
       selectedImage = null;
       preview = null;
@@ -331,4 +344,19 @@ exportButton.addEventListener("click", () => {
   link.href = dataURL;
   link.download = "whiteboard.png";
   link.click();
+});
+
+const brushSlider = document.getElementById("brush-size") as HTMLInputElement;
+const brushValueLabel = document.getElementById(
+  "brush-size-value",
+) as HTMLSpanElement;
+
+brushSlider.addEventListener("input", () => {
+  markerSize = parseInt(brushSlider.value);
+  brushValueLabel.textContent = `${markerSize}px`;
+
+  if (preview && !selectedSticker && !selectedImage) {
+    preview.set({ weight: markerSize });
+    DrawingChanged();
+  }
 });
