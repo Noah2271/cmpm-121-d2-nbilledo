@@ -16,11 +16,14 @@ document.body.innerHTML = `
   <button id="sticker-1" style="background-color: #000000ff;">😀</button>
   <button id="sticker-2" style="background-color: #050505ff;">⭐</button>
   <button id="sticker-3" style="background-color: #080808ff;">🍀</button>
-  <button id="custom-sticker" style="background-color: #50ac47ff;">Custom Sticker</button>
-  </div
+  <button id="custom-sticker" style="background-color: #50ac47ff;">Set String Sticker</button>
+     <button id="import-sticker" style="background-color: #2081f0;">Import Image Sticker</button>
+    <input type="file" id="sticker-upload" accept="image/*" style="display:none;" />
   </div>
+</div>
 `;
 
+// -----------------------  Buttons -----------------------
 const undoButton = document.getElementById("undo") as HTMLButtonElement;
 const redoButton = document.getElementById("redo") as HTMLButtonElement;
 const clearButton = document.getElementById("clear") as HTMLButtonElement;
@@ -35,19 +38,17 @@ if (!context) throw new Error("Canvas not supported");
 
 // ----------------------- Tool Classes -----------------------
 class LineCommand {
-  private points: [number, number][]; // Create points array to store points in the stroke
+  private points: [number, number][];
   private strokeWeight: number;
-  constructor(firstPoint: [number, number], brushSize: number) { // Point of contact
+  constructor(firstPoint: [number, number], brushSize: number) {
     this.points = [firstPoint];
     this.strokeWeight = brushSize;
   }
 
-  // Appends more points to the stroke as you move the cursor with mousedown
   drag(x: number, y: number) {
     this.points.push([x, y]);
   }
 
-  //
   display(ctx: CanvasRenderingContext2D) {
     if (this.points.length === 0) return;
     ctx.beginPath();
@@ -60,21 +61,28 @@ class LineCommand {
   }
 }
 
-class ToolCommand { // Consolidated Tool preview, Sticker Preview Class
+class ToolCommand {
   private x: number;
   private y: number;
   private strokeWeight?: number;
   private sticker?: string;
+  private stickerImage?: HTMLImageElement | undefined;
   private opacity: number;
 
   constructor(
     x: number,
     y: number,
-    options: { strokeWeight?: number; sticker?: string; opacity?: number } = {},
+    options: {
+      strokeWeight?: number;
+      sticker?: string;
+      opacity?: number;
+      stickerImage?: HTMLImageElement | undefined;
+    } = {},
   ) {
     this.x = x;
     this.y = y;
     this.strokeWeight = options.strokeWeight ?? 0;
+    this.stickerImage = options.stickerImage ?? undefined;
     this.sticker = options.sticker ?? "";
     this.opacity = options.opacity ?? 1;
   }
@@ -90,17 +98,30 @@ class ToolCommand { // Consolidated Tool preview, Sticker Preview Class
 
   draw(ctx: CanvasRenderingContext2D) {
     ctx.globalAlpha = this.opacity;
-    if (this.strokeWeight) { // If strokeweight, brush preview, draw circle at cursor position
+    if (this.strokeWeight) {
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.strokeWeight / 2, 0, Math.PI * 2);
       ctx.strokeStyle = "black";
       ctx.lineWidth = 2;
       ctx.stroke();
     }
-    if (this.sticker) { // If sticker, sticker preview, draw sticker with low opacity at cursor position
+    if (this.sticker) {
       ctx.font = "30px sans-serif";
       ctx.fillText(this.sticker, this.x, this.y);
     }
+    if (this.stickerImage) {
+      const scale = 0.15;
+      const width = this.stickerImage.width * scale;
+      const height = this.stickerImage.height * scale;
+      ctx.drawImage(
+        this.stickerImage,
+        this.x - width / 2,
+        this.y - height / 2,
+        width,
+        height,
+      );
+    }
+
     ctx.globalAlpha = 1;
   }
 }
@@ -113,6 +134,7 @@ let preview: ToolCommand | null = null;
 let markerSize: number = 5;
 let drawing = false;
 let selectedSticker: string | null = null;
+let selectedImage: HTMLImageElement | null = null;
 
 // ----------------------- Redraw Helper -----------------------
 function DrawingChanged() {
@@ -139,7 +161,7 @@ canvas.addEventListener("drawing-changed", () => {
 
 // ----------------------- Mouse Events -----------------------
 canvas.addEventListener("mousedown", (event) => {
-  if (selectedSticker) { // If sticker, place sticker on mousedown and push to strokeArray for undo
+  if (selectedSticker) {
     const sticker = new ToolCommand(event.offsetX, event.offsetY, {
       sticker: selectedSticker,
     });
@@ -148,7 +170,15 @@ canvas.addEventListener("mousedown", (event) => {
     return;
   }
 
-  drawing = true; // Else draw stroke and push onto strokeArray for undo
+  if (selectedImage) {
+    const sticker = new ToolCommand(event.offsetX, event.offsetY, {
+      stickerImage: selectedImage,
+    });
+    strokeArray.push(sticker);
+    DrawingChanged();
+    return;
+  }
+  drawing = true;
   currentCommand = new LineCommand([event.offsetX, event.offsetY], markerSize);
   strokeArray.push(currentCommand);
   DrawingChanged();
@@ -158,17 +188,23 @@ canvas.addEventListener("mousemove", (event) => {
   const x = event.offsetX;
   const y = event.offsetY;
 
-  // Create preview if it doesn't exist yet
+  // If an image sticker is selected, preview it semi-transparently
+  if (selectedImage) {
+    preview = new ToolCommand(x, y, {
+      stickerImage: selectedImage,
+      opacity: 0.5,
+    });
+    DrawingChanged();
+    return;
+  }
+
   if (!preview) {
     const options = selectedSticker
       ? { sticker: selectedSticker, opacity: 0.5 }
       : { strokeWeight: markerSize };
-
     preview = new ToolCommand(x, y, options);
-  } // Otherwise, just update the preview
-  else {
+  } else {
     preview.updatePosition(x, y);
-
     if (selectedSticker) {
       preview.set({ opacity: 0.5, sticker: selectedSticker });
     } else {
@@ -178,7 +214,6 @@ canvas.addEventListener("mousemove", (event) => {
 
   DrawingChanged();
 
-  // If currently drawing, drag the stroke
   if (drawing && currentCommand) {
     currentCommand.drag(x, y);
     DrawingChanged();
@@ -193,11 +228,11 @@ canvas.addEventListener("mouseup", () => {
 canvas.addEventListener("mouseleave", () => {
   drawing = false;
   currentCommand = null;
-  preview = null; // Hide preview if mouse off canvas
+  preview = null;
   DrawingChanged();
 });
 
-// ----------------------- Buttons -----------------------
+// ----------------------- Button Actions -----------------------
 clearButton.addEventListener("click", () => {
   strokeArray.length = 0;
   redoArray.length = 0;
@@ -219,11 +254,13 @@ redoButton.addEventListener("click", () => {
 thinMarker.addEventListener("click", () => {
   markerSize = 5;
   selectedSticker = null;
+  selectedImage = null;
 });
 
 thickMarker.addEventListener("click", () => {
   markerSize = 10;
   selectedSticker = null;
+  selectedImage = null;
 });
 
 stickerButtons.forEach((button) => {
@@ -231,9 +268,40 @@ stickerButtons.forEach((button) => {
     if (button.id == "custom-sticker") {
       const response = prompt("Enter sticker content:");
       selectedSticker = response;
+      selectedImage = null;
+    } else if (button.id === "import-sticker") {
+      // handled below
     } else {
       selectedSticker = button.textContent || null;
+      selectedImage = null;
       preview = null;
     }
   });
+});
+
+// ----------------------- Import Sticker -----------------------
+const importButton = document.getElementById(
+  "import-sticker",
+) as HTMLButtonElement;
+const fileInput = document.getElementById("sticker-upload") as HTMLInputElement;
+
+importButton.addEventListener("click", () => {
+  fileInput.click();
+});
+
+fileInput.addEventListener("change", () => {
+  const file = fileInput.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function (event) {
+    const img = new Image();
+    img.src = event.target?.result as string;
+    img.onload = () => {
+      selectedSticker = null;
+      selectedImage = img;
+      preview = null;
+    };
+  };
+  reader.readAsDataURL(file);
 });
