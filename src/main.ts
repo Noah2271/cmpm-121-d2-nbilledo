@@ -24,9 +24,12 @@ document.body.innerHTML = `
   </div>
   <div class="brush-size-container">
   </br>
-  <label for="weight-slider">BRUSH SIZE:</label>
+  </br>
+  <label for="weight-slider">BRUSH TOOLS | SIZE: </label>
   <input type="range" id="weight-slider" min="1" max="100" value="5" />
   <span id="brush-size-value">5PX</span>
+  <label for="color-picker">| COLOR:</label>
+  <input type="color" id="color-picker" value="#000000" />
 </div>
 </div>
 `;
@@ -48,6 +51,7 @@ const brushSlider = document.getElementById(
 const brushValueLabel = document.getElementById(
   "brush-size-value",
 ) as HTMLSpanElement;
+const colorPicker = document.getElementById("color-picker") as HTMLInputElement;
 const exportButton = document.getElementById("export") as HTMLButtonElement;
 if (!context) throw new Error("Canvas not supported");
 
@@ -55,9 +59,11 @@ if (!context) throw new Error("Canvas not supported");
 class LineCommand {
   private points: [number, number][];
   private weight: number;
-  constructor(firstPoint: [number, number], brushSize: number) {
+  private color: string;
+  constructor(firstPoint: [number, number], brushSize: number, color: string) {
     this.points = [firstPoint];
     this.weight = brushSize;
+    this.color = color;
   }
 
   drag(x: number, y: number) {
@@ -68,6 +74,7 @@ class LineCommand {
     if (this.points.length === 0) return;
     ctx.beginPath();
     ctx.lineWidth = this.weight;
+    ctx.strokeStyle = this.color;
     ctx.moveTo(...(this.points[0] as [number, number]));
     for (let i = 1; i < this.points.length; i++) {
       ctx.lineTo(...(this.points[i] as [number, number]));
@@ -147,6 +154,7 @@ const redoArray: (LineCommand | ToolCommand)[] = [];
 let currentCommand: LineCommand | null = null;
 let preview: ToolCommand | null = null;
 let markerSize: number = 5;
+let markerColor: string = "#000000";
 let drawing = false;
 let selectedSticker: string | null = null;
 let selectedImage: HTMLImageElement | null = null;
@@ -158,7 +166,7 @@ function DrawingChanged() {
 // Iterates through strokeArray and redraws each action on each call.
 canvas.addEventListener("drawing-changed", () => {
   context.clearRect(0, 0, canvas.width, canvas.height);
-  context.lineCap = "square";
+  context.lineCap = "round";
   context.strokeStyle = "black";
 
   strokeArray.forEach((command) => {
@@ -195,7 +203,11 @@ canvas.addEventListener("mousedown", (event) => {
     return;
   }
   drawing = true;
-  currentCommand = new LineCommand([event.offsetX, event.offsetY], markerSize);
+  currentCommand = new LineCommand(
+    [event.offsetX, event.offsetY],
+    markerSize,
+    markerColor,
+  );
   strokeArray.push(currentCommand);
   DrawingChanged();
 });
@@ -361,4 +373,8 @@ brushSlider.addEventListener("input", () => {
     preview.set({ weight: markerSize });
     DrawingChanged();
   }
+});
+
+colorPicker.addEventListener("input", () => {
+  markerColor = colorPicker.value;
 });
